@@ -1,0 +1,131 @@
+// backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTIONIST
+  PATIENT
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  PENDING
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum QueueStatus {
+  WAITING
+  CALLING
+  COMPLETED
+  SKIPPED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(RECEPTIONIST)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  doctorProfile Doctor?
+}
+
+model Doctor {
+  id                 String   @id @default(uuid())
+  name               String
+  specialization     String
+  department         String   @default("General") // Needed for aggregates in routes
+  consultationFee    Float    @default(0.0)       // Crucial for stats & reports
+  experience         Int      @default(0)         // Crucial for stats & reports
+  availableStartTime String   @default("09:00")
+  availableEndTime   String   @default("17:00")
+  isActive           Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Link to credentials
+  userId             String?  @unique
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  appointments       Appointment[]
+  queueTokens        QueueToken[]
+
+  @@index([specialization])
+  @@index([department])
+}
+
+model Patient {
+  id             String   @id @default(uuid())
+  name           String
+  phoneNumber    String   @unique
+  email          String?  @unique
+  age            Int?
+  gender         String?
+  medicalHistory String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  appointments   Appointment[]
+  queueTokens    QueueToken[]
+
+  @@index([phoneNumber])
+  @@index([name])
+}
+
+model Appointment {
+  id              String            @id @default(uuid())
+  patientId       String
+  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId        String
+  doctor          Doctor            @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  appointmentDate DateTime
+  status          AppointmentStatus @default(PENDING) // Inconsistent defaults resolved
+  notes           String?
+  reason          String?           // Injected: expected by booking form req.body.reason
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  queueToken      QueueToken?
+
+  // DATABASE BLOCK FOR DOUBLE BOOKINGS:
+  // Prevents booking the same doctor for the exact same millisecond slot
+  @@unique([doctorId, appointmentDate])
+  @@index([patientId])
+  @@index([doctorId])
+  @@index([status])
+}
+
+model QueueToken {
+  id            String      @id @default(uuid())
+  tokenNumber   Int
+  patientId     String
+  patient       Patient     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  doctorId      String
+  doctor        Doctor      @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  appointmentId String?     @unique
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  
+  status        QueueStatus @default(WAITING)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([doctorId, createdAt])
+  @@index([status])
+}
