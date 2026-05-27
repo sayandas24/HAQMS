@@ -27,16 +27,22 @@ export default function QueueMonitor() {
   };
 
   useEffect(() => {
-    // Initial fetch
-    fetchQueueData();
+    // Initial fetch deferred to microtask queue to avoid synchronous state triggers during mounting
+    const timer = setTimeout(() => {
+      fetchQueueData();
+    }, 0);
 
-    // MEMORY LEAK BUG:
-    // This setInterval has NO cleanup function (does not return clearInterval).
+    // MEMORY LEAK BUG FIXED:
+    // Added a proper unmount callback that clears the active interval to prevent orphaned tasks.
     const intervalId = setInterval(() => {
-      console.log(`[POLL] Active Queue Poll #${refreshCount + 1} firing...`);
       fetchQueueData();
       setRefreshCount((prev) => prev + 1);
     }, 3000);
+
+    return () => {
+      clearTimeout(timer);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Group tokens by doctor

@@ -21,3 +21,8 @@ export const deletePatient = async (id) => {
   const response = await apiClient.delete(`/patients/${id}`);
   return response.data;
 };
+
+export const getPatientById = async (id) => {
+  const response = await apiClient.get(`/patients/${id}`);
+  return response.data;
+};

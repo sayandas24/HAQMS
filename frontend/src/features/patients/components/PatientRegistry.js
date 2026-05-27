@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { ClipboardList, Search, Trash2 } from 'lucide-react';
 
 export default function PatientRegistry({
@@ -15,6 +16,27 @@ export default function PatientRegistry({
   handleDeletePatient,
   doctorsList
 }) {
+  // Local high-speed input state to eliminate parent re-render typing lag
+  const [localSearch, setLocalSearch] = useState(patientSearch);
+  const [prevSearch, setPrevSearch] = useState(patientSearch);
+
+  // Sync local input with parent state during render in case parent resets search (avoids cascading render warning)
+  if (patientSearch !== prevSearch) {
+    setPrevSearch(patientSearch);
+    setLocalSearch(patientSearch);
+  }
+
+  // Debounce the parent state update
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setPatientSearch(localSearch);
+    }, 300);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [localSearch, setPatientSearch]);
+
   return (
     <div className="glass p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800">
       <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
@@ -22,7 +44,7 @@ export default function PatientRegistry({
         Patient Lookup Directory
       </h3>
 
-      {/* Filters (Causes slow re-renders on keystroke) */}
+      {/* Filters (No longer triggers parent re-renders on every keystroke) */}
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1 rounded-lg shadow-sm">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -30,8 +52,8 @@ export default function PatientRegistry({
           </div>
           <input
             type="text"
-            value={patientSearch}
-            onChange={(e) => setPatientSearch(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             placeholder="Search by name, phone or email..."
             className="block w-full pl-9 pr-3 py-2 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent text-sm"
           />
