@@ -1,15 +1,17 @@
 'use client';
 
 import { CalendarDays } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function DoctorBookings({
-  doctorAppointments,
-  setSelectedPatientHistory,
-  doctorsList,
-  user,
-  handleQueueCheckin,
-  handleCompleteAppointment
-}) {
+export default function DoctorBookings({ user }) {
+  const {
+    doctorAppointments,
+    setSelectedPatientHistory,
+    doctorsList,
+    handleQueueCheckin,
+    handleCompleteAppointment
+  } = useDashboardStore();
+
   return (
     <div className="space-y-6">
       <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
@@ -66,7 +68,7 @@ export default function DoctorBookings({
                             Check In Patient
                           </button>
                           <button
-                            onClick={() => handleCompleteAppointment(app.id)}
+                            onClick={() => handleCompleteAppointment(app.id, user)}
                             className="text-xxs px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-extrabold hover:bg-teal-500 hover:text-white transition-colors"
                           >
                             Complete

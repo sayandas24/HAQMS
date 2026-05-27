@@ -1,21 +1,24 @@
 'use client';
 
 import { CalendarDays } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function AppointmentScheduler({
-  bookingPatientId,
-  setBookingPatientId,
-  bookingDoctorId,
-  setBookingDoctorId,
-  bookingDate,
-  setBookingDate,
-  bookingReason,
-  setBookingReason,
-  bookingMessage,
-  handleBookAppointment,
-  patients,
-  doctorsList
-}) {
+export default function AppointmentScheduler() {
+  const {
+    bookingPatientId,
+    setBookingPatientId,
+    bookingDoctorId,
+    setBookingDoctorId,
+    bookingDate,
+    setBookingDate,
+    bookingReason,
+    setBookingReason,
+    bookingMessage,
+    handleBookAppointment,
+    patients,
+    doctorsList
+  } = useDashboardStore();
+
   return (
     <div className="glass p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800">
       <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">

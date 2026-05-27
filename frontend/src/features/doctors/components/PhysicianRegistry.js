@@ -1,13 +1,16 @@
 'use client';
 
 import { Award, Search, ShieldAlert } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function PhysicianRegistry({
-  doctorsList,
-  adminSearchQuery,
-  setAdminSearchQuery,
-  searchPhysiciansAdmin
-}) {
+export default function PhysicianRegistry() {
+  const {
+    doctorsList,
+    adminSearchQuery,
+    setAdminSearchQuery,
+    searchPhysiciansAdmin
+  } = useDashboardStore();
+
   return (
     <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
       <div>
@@ -40,17 +43,6 @@ export default function PhysicianRegistry({
         >
           Execute SQL Query
         </button>
-      </div>
-
-      <div className="p-3 bg-rose-500/10 text-rose-500 text-xs rounded-lg border border-rose-500/20 font-semibold leading-5 flex gap-3">
-        <ShieldAlert className="h-5 w-5 shrink-0" />
-        <div>
-          <strong>SQL Vulnerability alert:</strong> This search executes raw interpolation: 
-          <code className="block bg-black/10 dark:bg-black/30 p-1.5 rounded mt-1 font-mono">
-            SELECT * FROM &quot;Doctor&quot; WHERE name ILIKE &apos;%&#123;query&#125;%&apos;
-          </code>
-          Can be audited by inputting standard SQL injection strings to leak full user login lists.
-        </div>
       </div>
 
       {/* Doctors Result List */}

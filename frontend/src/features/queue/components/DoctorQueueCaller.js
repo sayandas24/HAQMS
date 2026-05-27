@@ -1,11 +1,11 @@
 'use client';
 
 import { Clock } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function DoctorQueueCaller({
-  doctorQueue,
-  handleUpdateQueueStatus
-}) {
+export default function DoctorQueueCaller({ user }) {
+  const { doctorQueue, handleUpdateQueueStatus } = useDashboardStore();
+
   return (
     <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">
       <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
@@ -40,7 +40,7 @@ export default function DoctorQueueCaller({
               <div className="mt-6 flex gap-2">
                 {t.status === 'WAITING' && (
                   <button
-                    onClick={() => handleUpdateQueueStatus(t.id, 'CALLING')}
+                    onClick={() => handleUpdateQueueStatus(t.id, 'CALLING', user)}
                     className="flex-1 py-1.5 bg-teal-600 text-white font-bold text-xxs rounded hover:bg-teal-700 transition-colors"
                   >
                     Call Patient
@@ -49,13 +49,13 @@ export default function DoctorQueueCaller({
                 {t.status === 'CALLING' && (
                   <>
                     <button
-                      onClick={() => handleUpdateQueueStatus(t.id, 'COMPLETED')}
+                      onClick={() => handleUpdateQueueStatus(t.id, 'COMPLETED', user)}
                       className="flex-1 py-1.5 bg-teal-600 text-white font-bold text-xxs rounded hover:bg-teal-700 transition-colors"
                     >
                       Consulted
                     </button>
                     <button
-                      onClick={() => handleUpdateQueueStatus(t.id, 'SKIPPED')}
+                      onClick={() => handleUpdateQueueStatus(t.id, 'SKIPPED', user)}
                       className="flex-1 py-1.5 bg-rose-500/10 text-rose-500 font-bold text-xxs rounded hover:bg-rose-500 hover:text-white transition-colors"
                     >
                       Skip / No Show

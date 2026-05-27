@@ -15,8 +15,18 @@ import reportRoutes from './routes/reports.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for all origins (weak/broad CORS config)
-app.use(cors());
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'https://figitallabs-haqms.vercel.app'];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS policy'));
+    }
+  },
+  credentials: true,
+}));
 
 // Body parser
 app.use(express.json());

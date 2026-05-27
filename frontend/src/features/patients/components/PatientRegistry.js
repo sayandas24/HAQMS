@@ -2,20 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { ClipboardList, Search, Trash2 } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function PatientRegistry({
-  patients,
-  patientsLoading,
-  patientSearch,
-  setPatientSearch,
-  patientGender,
-  setPatientGender,
-  patientsPagination,
-  fetchPatients,
-  handleQueueCheckin,
-  handleDeletePatient,
-  doctorsList
-}) {
+export default function PatientRegistry() {
+  const {
+    patients,
+    patientsLoading,
+    patientSearch,
+    setPatientSearch,
+    patientGender,
+    setPatientGender,
+    patientsPagination,
+    fetchPatients,
+    handleQueueCheckin,
+    handleDeletePatient,
+    doctorsList
+  } = useDashboardStore();
+
   // Local high-speed input state to eliminate parent re-render typing lag
   const [localSearch, setLocalSearch] = useState(patientSearch);
   const [prevSearch, setPrevSearch] = useState(patientSearch);
@@ -106,7 +109,6 @@ export default function PatientRegistry({
                       Check In
                     </button>
                     
-                    {/* Security flaw testing: Receptionist or doctor can delete since check is bypassed */}
                     <button
                       onClick={() => handleDeletePatient(p.id)}
                       className="text-xxs p-1 rounded bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-colors"

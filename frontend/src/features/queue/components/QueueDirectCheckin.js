@@ -1,12 +1,11 @@
 'use client';
 
 import { Activity } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function QueueDirectCheckin({
-  patients,
-  doctorsList,
-  handleQueueCheckin
-}) {
+export default function QueueDirectCheckin() {
+  const { patients, doctorsList, handleQueueCheckin } = useDashboardStore();
+
   return (
     <div className="glass p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800">
       <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">
@@ -18,10 +17,6 @@ export default function QueueDirectCheckin({
       </p>
 
       <div className="space-y-6">
-        <div className="p-4 rounded-xl border border-teal-500/25 bg-teal-500/10 text-slate-700 dark:text-slate-300 text-xs leading-5">
-          <strong>Token Generation Engine Note:</strong> Direct arrivals bypass appointments. The token engine automatically fetches the current days maximum token size and increments. 
-          <span className="block mt-1 font-bold text-rose-500 uppercase tracking-wide">Warning: Vulnerable to check-in race conditions!</span>
-        </div>
 
         <div className="space-y-4 text-xs font-semibold text-slate-700 dark:text-slate-300">
           <div>

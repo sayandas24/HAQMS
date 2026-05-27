@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function PatientHistoryModal({
-  selectedPatientHistory,
-  setSelectedPatientHistory
-}) {
+export default function PatientHistoryModal() {
+  const { selectedPatientHistory, setSelectedPatientHistory } = useDashboardStore();
+
   if (!selectedPatientHistory) return null;
 
   return (
@@ -37,7 +37,6 @@ export default function PatientHistoryModal({
       </div>
 
       <div className="pt-2 flex justify-between items-center text-xs">
-        {/* Incomplete Missing Route trigger -> will route to 404 page! */}
         <Link 
           href={`/patients/${selectedPatientHistory.id}/history-records`} 
           className="text-teal-600 font-extrabold hover:underline flex items-center gap-1"

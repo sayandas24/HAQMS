@@ -1,9 +1,14 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/common/Navbar';
-import { useDashboard } from './hooks/useDashboard';
 
-// Feature Components
+// Zustand Store
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
+
+// Feature Components (stateless, consuming Zustand directly)
 import PatientRegistry from '@/features/patients/components/PatientRegistry';
 import PatientRegistrationForm from '@/features/patients/components/PatientRegistrationForm';
 import PatientHistoryModal from '@/features/patients/components/PatientHistoryModal';
@@ -15,62 +20,52 @@ import PhysicianRegistry from '@/features/doctors/components/PhysicianRegistry';
 import SystemReports from '@/features/reports/components/SystemReports';
 
 export default function Dashboard() {
+  const { user, token } = useAuth();
+  const router = useRouter();
+
+  // Zustand State hooks
   const {
-    user,
     activeTab,
     setActiveTab,
-    patients,
-    patientsLoading,
     patientSearch,
-    setPatientSearch,
     patientGender,
-    setPatientGender,
-    patientsPagination,
-    regName,
-    setRegName,
-    regEmail,
-    setRegEmail,
-    regPhone,
-    setRegPhone,
-    regAge,
-    setRegAge,
-    regGender,
-    setRegGender,
-    regHistory,
-    setRegHistory,
-    regMessage,
     doctorsList,
-    bookingPatientId,
-    setBookingPatientId,
-    bookingDoctorId,
-    setBookingDoctorId,
-    bookingDate,
-    setBookingDate,
-    bookingReason,
-    setBookingReason,
-    bookingMessage,
+    fetchPatients,
+    fetchDoctorsDropdown,
+    fetchDoctorWorklist,
     checkinMessage,
     setCheckinMessage,
-    doctorAppointments,
-    doctorQueue,
-    selectedPatientHistory,
-    setSelectedPatientHistory,
-    adminReportData,
-    adminReportLoading,
-    adminSearchQuery,
-    setAdminSearchQuery,
-    fetchPatients,
-    handleRegisterPatient,
-    handleBookAppointment,
-    handleDeletePatient,
-    handleQueueCheckin,
-    handleUpdateQueueStatus,
-    handleCompleteAppointment,
-    generateSystemReport,
-    searchPhysiciansAdmin
-  } = useDashboard();
+    selectedPatientHistory
+  } = useDashboardStore();
 
-  // Rules of Hooks fully satisfied: early return placed AFTER all hook calls!
+  // 1. Navigation Guard
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    }
+  }, [user]);
+
+  // 2. Fetch Patients on Search/Gender change
+  useEffect(() => {
+    if (user && (user.role === 'RECEPTIONIST' || user.role === 'ADMIN')) {
+      fetchPatients(1);
+    }
+  }, [patientSearch, patientGender, user, token]);
+
+  // 3. Fetch Doctors dropdown list on mount
+  useEffect(() => {
+    if (user) {
+      fetchDoctorsDropdown();
+    }
+  }, [user, token]);
+
+  // 4. Fetch Doctor Worklist for doctors on mount / doctorsList update
+  useEffect(() => {
+    if (user && user.role === 'DOCTOR' && doctorsList.length > 0) {
+      fetchDoctorWorklist(user);
+    }
+  }, [doctorsList, user, token]);
+
   if (!user) return null;
 
   return (
@@ -149,38 +144,11 @@ export default function Dashboard() {
             <div className="grid gap-8 lg:grid-cols-3">
               {/* Directory Section */}
               <div className="lg:col-span-2 space-y-6">
-                <PatientRegistry
-                  patients={patients}
-                  patientsLoading={patientsLoading}
-                  patientSearch={patientSearch}
-                  setPatientSearch={setPatientSearch}
-                  patientGender={patientGender}
-                  setPatientGender={setPatientGender}
-                  patientsPagination={patientsPagination}
-                  fetchPatients={fetchPatients}
-                  handleQueueCheckin={handleQueueCheckin}
-                  handleDeletePatient={handleDeletePatient}
-                  doctorsList={doctorsList}
-                />
+                <PatientRegistry />
               </div>
 
               {/* Registration Form */}
-              <PatientRegistrationForm
-                regName={regName}
-                setRegName={setRegName}
-                regEmail={regEmail}
-                setRegEmail={setRegEmail}
-                regPhone={regPhone}
-                setRegPhone={setRegPhone}
-                regAge={regAge}
-                setRegAge={setRegAge}
-                regGender={regGender}
-                setRegGender={setRegGender}
-                regHistory={regHistory}
-                setRegHistory={setRegHistory}
-                regMessage={regMessage}
-                handleRegisterPatient={handleRegisterPatient}
-              />
+              <PatientRegistrationForm />
             </div>
           </div>
         )}
@@ -191,27 +159,10 @@ export default function Dashboard() {
         {activeTab === 'book' && (
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Book Appointment Card */}
-            <AppointmentScheduler
-              bookingPatientId={bookingPatientId}
-              setBookingPatientId={setBookingPatientId}
-              bookingDoctorId={bookingDoctorId}
-              setBookingDoctorId={setBookingDoctorId}
-              bookingDate={bookingDate}
-              setBookingDate={setBookingDate}
-              bookingReason={bookingReason}
-              setBookingReason={setBookingReason}
-              bookingMessage={bookingMessage}
-              handleBookAppointment={handleBookAppointment}
-              patients={patients}
-              doctorsList={doctorsList}
-            />
+            <AppointmentScheduler />
 
             {/* Quick Walkin Checkin Token Board */}
-            <QueueDirectCheckin
-              patients={patients}
-              doctorsList={doctorsList}
-              handleQueueCheckin={handleQueueCheckin}
-            />
+            <QueueDirectCheckin />
           </div>
         )}
 
@@ -219,55 +170,33 @@ export default function Dashboard() {
             TAB: DOCTOR WORKLIST - APPOINTMENTS (DOCTOR ROLE)
             ============================================================== */}
         {activeTab === 'appointments' && (
-          <DoctorBookings
-            doctorAppointments={doctorAppointments}
-            setSelectedPatientHistory={setSelectedPatientHistory}
-            doctorsList={doctorsList}
-            user={user}
-            handleQueueCheckin={handleQueueCheckin}
-            handleCompleteAppointment={handleCompleteAppointment}
-          />
+          <DoctorBookings user={user} />
         )}
 
         {/* Patient Clinical History Modal Display */}
         {selectedPatientHistory && (
-          <PatientHistoryModal
-            selectedPatientHistory={selectedPatientHistory}
-            setSelectedPatientHistory={setSelectedPatientHistory}
-          />
+          <PatientHistoryModal />
         )}
 
         {/* ==============================================================
             TAB: DOCTOR ACTIVE CALLING QUEUE (DOCTOR ROLE)
             ============================================================== */}
         {activeTab === 'queue' && (
-          <DoctorQueueCaller
-            doctorQueue={doctorQueue}
-            handleUpdateQueueStatus={handleUpdateQueueStatus}
-          />
+          <DoctorQueueCaller user={user} />
         )}
 
         {/* ==============================================================
             TAB: SYSTEM REPORTS (ADMIN ROLE)
             ============================================================== */}
         {activeTab === 'reports' && (
-          <SystemReports
-            adminReportData={adminReportData}
-            adminReportLoading={adminReportLoading}
-            generateSystemReport={generateSystemReport}
-          />
+          <SystemReports />
         )}
 
         {/* ==============================================================
             TAB: PHYSICIAN REGISTRY (ADMIN ROLE - SQL INJECTION VULNERABILITY)
             ============================================================== */}
         {activeTab === 'physicians' && (
-          <PhysicianRegistry
-            doctorsList={doctorsList}
-            adminSearchQuery={adminSearchQuery}
-            setAdminSearchQuery={setAdminSearchQuery}
-            searchPhysiciansAdmin={searchPhysiciansAdmin}
-          />
+          <PhysicianRegistry />
         )}
       </main>
     </div>

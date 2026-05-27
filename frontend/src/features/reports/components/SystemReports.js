@@ -1,12 +1,11 @@
 'use client';
 
 import { TrendingUp, Clock, ShieldAlert } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function SystemReports({
-  adminReportData,
-  adminReportLoading,
-  generateSystemReport
-}) {
+export default function SystemReports() {
+  const { adminReportData, adminReportLoading, generateSystemReport } = useDashboardStore();
+
   return (
     <div className="space-y-8">
       <div className="glass p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md">

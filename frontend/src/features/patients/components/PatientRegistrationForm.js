@@ -1,23 +1,26 @@
 'use client';
 
 import { UserPlus } from 'lucide-react';
+import { useDashboardStore } from '@/features/dashboard/store/useDashboardStore';
 
-export default function PatientRegistrationForm({
-  regName,
-  setRegName,
-  regEmail,
-  setRegEmail,
-  regPhone,
-  setRegPhone,
-  regAge,
-  setRegAge,
-  regGender,
-  setRegGender,
-  regHistory,
-  setRegHistory,
-  regMessage,
-  handleRegisterPatient
-}) {
+export default function PatientRegistrationForm() {
+  const {
+    regName,
+    setRegName,
+    regEmail,
+    setRegEmail,
+    regPhone,
+    setRegPhone,
+    regAge,
+    setRegAge,
+    regGender,
+    setRegGender,
+    regHistory,
+    setRegHistory,
+    regMessage,
+    handleRegisterPatient
+  } = useDashboardStore();
+
   return (
     <div className="glass p-6 rounded-2xl shadow-md border border-slate-200 dark:border-slate-800 h-fit">
       <h3 className="text-lg font-extrabold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-4">

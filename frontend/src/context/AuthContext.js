@@ -14,23 +14,6 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const router = useRouter();
 
-  useEffect(() => {
-    // Check for stored token and user on initialization
-    const storedToken = localStorage.getItem('haqms_token');
-    const storedUser = localStorage.getItem('haqms_user');
-
-    if (storedToken && storedUser) {
-      try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse user details from localStorage', e);
-        logout();
-      }
-    }
-    setLoading(false);
-  }, []);
-
   const login = async (email, password) => {
     setLoading(true);
     setError(null);
@@ -84,6 +67,27 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     router.push('/login');
   };
+
+  useEffect(() => {
+    // Check for stored token and user on initialization deferred to separate tick
+    const timer = setTimeout(() => {
+      const storedToken = localStorage.getItem('haqms_token');
+      const storedUser = localStorage.getItem('haqms_user');
+
+      if (storedToken && storedUser) {
+        try {
+          setToken(storedToken);
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse user details from localStorage', e);
+          logout();
+        }
+      }
+      setLoading(false);
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <AuthContext.Provider
