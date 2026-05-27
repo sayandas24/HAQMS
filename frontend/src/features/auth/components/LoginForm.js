@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { User, Lock, Activity, Eye, EyeOff } from 'lucide-react';
 
-export default function Login() {
+export default function LoginForm() {
   const { login, error: authError, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,8 +21,7 @@ export default function Login() {
     // INCONSISTENT VALIDATION BUG:
     // Simple basic regex that is flawed (e.g. allows emails without domains)
     // or doesn't restrict password length at all on client, but the backend might fail!
-    const emailRegex = /^[^\s@]+@[^\s@]+$/; // This is a standard regex, but let's see,
-    // junior dev wrote it to skip length check, letting empty or weak passwords through to the DB:
+    const emailRegex = /^[^\s@]+@[^\s@]+$/;
     if (!email) {
       setValidationError('Please enter your email address.');
       return;
@@ -33,9 +32,6 @@ export default function Login() {
       return;
     }
 
-    // Notice we do NOT check password length here (even though registration requires it),
-    // causing inconsistent user experiences and letting brute force slide.
-    
     const result = await login(email, password);
     if (!result.success) {
       setValidationError(result.error || 'Invalid credentials');
@@ -78,7 +74,7 @@ export default function Login() {
                 <input
                   id="email"
                   name="email"
-                  type="text" // Inconsistent: using text instead of email type to disable native validations
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2 border border-slate-300 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all text-sm"
