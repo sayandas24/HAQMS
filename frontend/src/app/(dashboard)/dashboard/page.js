@@ -21,8 +21,15 @@ import DoctorQueueCaller from '@/features/queue/components/DoctorQueueCaller';
 import PhysicianRegistry from '@/features/doctors/components/PhysicianRegistry';
 import SystemReports from '@/features/reports/components/SystemReports';
 
+// API Services
+import { getPatients, registerPatient, deletePatient } from '@/features/patients/api/patients';
+import { getDoctors, searchDoctors } from '@/features/doctors/api/doctors';
+import { bookAppointment, getDoctorAppointments, updateAppointmentStatus } from '@/features/appointments/api/appointments';
+import { getQueue, checkinPatient, updateQueueStatus } from '@/features/queue/api/queue';
+import { getDoctorStatsReport } from '@/features/reports/api/reports';
+
 export default function Dashboard() {
-  const { user, token, API_BASE_URL, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const router = useRouter();
 
   // Navigation Guard
@@ -86,10 +93,7 @@ export default function Dashboard() {
   const fetchPatients = async (page = 1) => {
     setPatientsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/patients?page=${page}&limit=5&search=${patientSearch}&gender=${patientGender}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await getPatients(page, patientSearch, patientGender);
       if (data.success) {
         setPatients(data.patients);
         setPatientsPagination({
@@ -115,10 +119,7 @@ export default function Dashboard() {
   // Fetch Doctors for booking drop-down
   const fetchDoctorsDropdown = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/doctors`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await getDoctors();
       setDoctorsList(data);
     } catch (e) {
       console.error(e);
@@ -140,36 +141,24 @@ export default function Dashboard() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/patients`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          name: regName,
-          email: regEmail,
-          phoneNumber: regPhone,
-          age: regAge,
-          gender: regGender,
-          medicalHistory: regHistory
-        })
+      await registerPatient({
+        name: regName,
+        email: regEmail,
+        phoneNumber: regPhone,
+        age: regAge,
+        gender: regGender,
+        medicalHistory: regHistory
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setRegMessage('Success: Patient registered successfully!');
-        setRegName('');
-        setRegEmail('');
-        setRegPhone('');
-        setRegAge('');
-        setRegHistory('');
-        fetchPatients(1);
-      } else {
-        setRegMessage(`Error: ${data.error || 'Failed to register'}`);
-      }
+      setRegMessage('Success: Patient registered successfully!');
+      setRegName('');
+      setRegEmail('');
+      setRegPhone('');
+      setRegAge('');
+      setRegHistory('');
+      fetchPatients(1);
     } catch (err) {
-      setRegMessage(`Error: ${err.message}`);
+      setRegMessage(`Error: ${err.response?.data?.error || err.message || 'Failed to register'}`);
     }
   };
 
@@ -184,30 +173,18 @@ export default function Dashboard() {
     }
 
     try {
-      const res = await fetch(`${API_BASE_URL}/appointments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          patientId: bookingPatientId,
-          doctorId: bookingDoctorId,
-          appointmentDate: bookingDate,
-          reason: bookingReason
-        })
+      await bookAppointment({
+        patientId: bookingPatientId,
+        doctorId: bookingDoctorId,
+        appointmentDate: bookingDate,
+        reason: bookingReason
       });
 
-      const data = await res.json();
-      if (res.ok) {
-        setBookingMessage('Success: Appointment booked successfully!');
-        setBookingReason('');
-        if (user.role === 'DOCTOR') fetchDoctorWorklist();
-      } else {
-        setBookingMessage(`Error: ${data.error || 'Failed to book'}`);
-      }
+      setBookingMessage('Success: Appointment booked successfully!');
+      setBookingReason('');
+      if (user.role === 'DOCTOR') fetchDoctorWorklist();
     } catch (err) {
-      setBookingMessage(`Error: ${err.message}`);
+      setBookingMessage(`Error: ${err.response?.data?.error || err.message || 'Failed to book'}`);
     }
   };
 
@@ -215,19 +192,11 @@ export default function Dashboard() {
   const handleDeletePatient = async (id) => {
     if (!confirm('Are you sure you want to delete this patient record?')) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/patients/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (res.ok) {
-        alert(data.message || 'Patient deleted.');
-        fetchPatients(patientsPagination.page);
-      } else {
-        alert(`Error: ${data.error || 'Unauthorized deletion!'}`);
-      }
+      const data = await deletePatient(id);
+      alert(data.message || 'Patient deleted.');
+      fetchPatients(patientsPagination.page);
     } catch (err) {
-      alert(`Error: ${err.message}`);
+      alert(`Error: ${err.response?.data?.error || err.message || 'Unauthorized deletion!'}`);
     }
   };
 
@@ -235,23 +204,11 @@ export default function Dashboard() {
   const handleQueueCheckin = async (patientId, doctorId, appointmentId = null) => {
     setCheckinMessage('');
     try {
-      const res = await fetch(`${API_BASE_URL}/queue/checkin`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ patientId, doctorId, appointmentId })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setCheckinMessage(`Checked in! Generated Token #${data.token.tokenNumber}`);
-        if (user.role === 'DOCTOR') fetchDoctorWorklist();
-      } else {
-        setCheckinMessage(`Error check-in: ${data.error}`);
-      }
+      const data = await checkinPatient({ patientId, doctorId, appointmentId });
+      setCheckinMessage(`Checked in! Generated Token #${data.token.tokenNumber}`);
+      if (user.role === 'DOCTOR') fetchDoctorWorklist();
     } catch (err) {
-      setCheckinMessage(`Error: ${err.message}`);
+      setCheckinMessage(`Error check-in: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -265,19 +222,13 @@ export default function Dashboard() {
       if (!matchedDoc) return;
 
       // 1. Fetch appointments for this doctor
-      const appRes = await fetch(`${API_BASE_URL}/appointments?doctorId=${matchedDoc.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const appData = await appRes.json();
+      const appData = await getDoctorAppointments(matchedDoc.id);
       if (appData.success) {
         setDoctorAppointments(appData.appointments);
       }
 
       // 2. Fetch queue list for this doctor today
-      const queueRes = await fetch(`${API_BASE_URL}/queue?doctorId=${matchedDoc.id}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const queueData = await queueRes.json();
+      const queueData = await getQueue(matchedDoc.id);
       setDoctorQueue(queueData);
 
     } catch (e) {
@@ -294,17 +245,8 @@ export default function Dashboard() {
   // Update token status (WAITING -> CALLING -> COMPLETED / SKIPPED)
   const handleUpdateQueueStatus = async (tokenId, newStatus) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/queue/${tokenId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: newStatus })
-      });
-      if (res.ok) {
-        fetchDoctorWorklist();
-      }
+      await updateQueueStatus(tokenId, newStatus);
+      fetchDoctorWorklist();
     } catch (e) {
       console.error(e);
     }
@@ -313,17 +255,8 @@ export default function Dashboard() {
   // Complete consultation of an appointment
   const handleCompleteAppointment = async (appId) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/appointments/${appId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ status: 'COMPLETED' })
-      });
-      if (res.ok) {
-        fetchDoctorWorklist();
-      }
+      await updateAppointmentStatus(appId, 'COMPLETED');
+      fetchDoctorWorklist();
     } catch (e) {
       console.error(e);
     }
@@ -337,13 +270,8 @@ export default function Dashboard() {
   const generateSystemReport = async () => {
     setAdminReportLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/reports/doctor-stats`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.success) {
-        setAdminReportData(data);
-      }
+      const data = await getDoctorStatsReport();
+      setAdminReportData(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -354,10 +282,7 @@ export default function Dashboard() {
   // Search Doctors (SQL Injection vulnerable API!)
   const searchPhysiciansAdmin = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/doctors?search=${adminSearchQuery}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const data = await searchDoctors(adminSearchQuery);
       if (Array.isArray(data)) {
         setDoctorsList(data);
       } else {

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/common/Navbar';
-import { Activity, Bell, Monitor, RefreshCw, AlertCircle } from 'lucide-react';
+import { Bell, Monitor, RefreshCw, AlertCircle } from 'lucide-react';
+import { getQueue } from '@/features/queue/api/queue';
 
 export default function QueueMonitor() {
   const [tokens, setTokens] = useState([]);
@@ -12,22 +13,14 @@ export default function QueueMonitor() {
   // Duplicated config state just to add minor code smell
   const [refreshCount, setRefreshCount] = useState(0);
 
-  // HARDCODED API BASE URL: Duplicated from AuthContext (code duplication smell)
-  const API_BASE_URL = 'http://localhost:5000/api';
-
   const fetchQueueData = async () => {
     try {
-      // Insecure: Fetches queue without checking credentials
-      const res = await fetch(`${API_BASE_URL}/queue`);
-      if (!res.ok) {
-        throw new Error('Failed to retrieve active token queue.');
-      }
-      const data = await res.json();
+      const data = await getQueue();
       setTokens(data);
       setError('');
     } catch (err) {
       console.error('Queue poll fetch error:', err);
-      setError(err.message);
+      setError(err.response?.data?.error || err.message || 'Failed to retrieve active token queue.');
     } finally {
       setLoading(false);
     }
