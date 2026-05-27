@@ -5,15 +5,23 @@ export const register = async (req, res, next) => {
     const { email, password, name, role } = req.body;
     const user = await authService.register({ email, password, name, role });
     
-    // Inconsistent Response style: Preserved exactly
+    // FIXED: Sanitize user payload by removing the password hash before sending to client
+    const { password: _, ...sanitizedUser } = user;
+    
     return res.status(201).json({
       message: 'User registered successfully',
-      user,
+      user: sanitizedUser,
     });
   } catch (error) {
-    // Improper Error Leakage: Preserved exactly
-    console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Server error during registration', databaseError: error.message });
+    console.error('[ERROR] Registration failure:', error);
+    // FIXED: Sanitize error output to prevent database details leakage
+    if (error.message === 'All fields are required') {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message === 'User already exists with this email') {
+      return res.status(409).json({ error: error.message });
+    }
+    return res.status(500).json({ error: 'Server error during registration' });
   }
 };
 
@@ -22,7 +30,6 @@ export const login = async (req, res, next) => {
     const { email, password } = req.body;
     const { token, user } = await authService.login({ email, password });
 
-    // Inconsistent Response style: Preserved exactly
     return res.json({
       status: 'success',
       data: {
@@ -36,9 +43,8 @@ export const login = async (req, res, next) => {
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('[ERROR] Login failure:', error);
     
-    // If it's a credentials error, return 401/400
     if (error.message === 'Invalid credentials') {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -46,8 +52,8 @@ export const login = async (req, res, next) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
     
-    // Leaks query stack trace: Preserved exactly
-    return res.status(500).json({ error: 'Internal Server Error', errorStack: error.stack });
+    // FIXED: Sanitize error response stack trace leaks
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -59,6 +65,6 @@ export const getMe = async (req, res, next) => {
     if (error.message === 'User not found') {
       return res.status(404).json({ error: 'User not found' });
     }
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 };

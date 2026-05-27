@@ -1,46 +1,50 @@
 import prisma from '../config/prisma.js';
 
 export const getAllPatients = async ({ search, gender, pageQuery, limitQuery }) => {
-  // Inefficient: Retrieve all matching rows without take/skip limits from the database.
-  // Scales poorly as patient directory grows. Preserved exactly.
-  const allPatients = await prisma.patient.findMany({
-    orderBy: { createdAt: 'desc' },
-  });
-
-  let filteredPatients = allPatients;
-
-  // In-memory filter for search (checks name/phone/email)
-  if (search) {
-    const query = search.toLowerCase();
-    filteredPatients = filteredPatients.filter(
-      (p) =>
-        p.name.toLowerCase().includes(query) ||
-        p.phoneNumber.includes(query) ||
-        (p.email && p.email.toLowerCase().includes(query))
-    );
-  }
-
-  // In-memory filter for gender
-  if (gender && gender !== 'All') {
-    filteredPatients = filteredPatients.filter(
-      (p) => p.gender && p.gender.toLowerCase() === gender.toLowerCase()
-    );
-  }
-
-  // In-memory pagination setup
   const page = parseInt(pageQuery) || 1;
   const limit = parseInt(limitQuery) || 5;
-  const offset = (page - 1) * limit;
-  
-  const paginatedResult = filteredPatients.slice(offset, offset + limit);
-  const totalPages = Math.ceil(filteredPatients.length / limit);
+  const skip = (page - 1) * limit;
+
+  const where = {};
+
+  // Database-level search filtering using PostgreSQL indexes
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { phoneNumber: { contains: search } },
+      { email: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  // Database-level gender filtering
+  if (gender && gender !== 'All') {
+    where.gender = {
+      equals: gender,
+      mode: 'insensitive',
+    };
+  }
+
+  // Fetch paginated results and total filtered count in parallel to optimize event loop
+  const [paginatedPatients, totalPatients] = await Promise.all([
+    prisma.patient.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.patient.count({
+      where,
+    }),
+  ]);
+
+  const totalPages = Math.ceil(totalPatients / limit);
 
   return {
-    patients: paginatedResult,
+    patients: paginatedPatients,
     pagination: {
       page,
       limit,
-      totalPatients: filteredPatients.length,
+      totalPatients,
       totalPages,
     },
   };
@@ -58,24 +62,47 @@ export const getPatientById = async (id) => {
 };
 
 export const createPatient = async ({ name, email, phoneNumber, age, gender, medicalHistory }) => {
-  // INCONSISTENT VALIDATION: Email nullable in schema, but only check missing fields here.
-  // No regex to check telephone number formats. Preserved exactly.
+  // 1. Simple validation checks grouped together
   if (!name || !phoneNumber || !age || !gender) {
     throw new Error('Name, phoneNumber, age, and gender are required.');
   }
 
-  const patient = await prisma.patient.create({
-    data: {
-      name,
-      email: email || null,
-      phoneNumber,
-      age: parseInt(age),
-      gender,
-      medicalHistory: medicalHistory || null,
-    },
-  });
+  const parsedAge = parseInt(age);
+  if (isNaN(parsedAge) || parsedAge < 0 || parsedAge > 130) {
+    throw new Error('Age must be a valid positive integer.');
+  }
 
-  return patient;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && email.trim() !== '' && !emailRegex.test(email.trim())) {
+    throw new Error('Invalid email address format.');
+  }
+
+  const phoneRegex = /^\+?[0-9\s\-()]{7,20}$/;
+  if (!phoneRegex.test(phoneNumber.trim())) {
+    throw new Error('Invalid phone number format.');
+  }
+
+  // 2. Direct database creation inside try/catch.
+  // PostgreSQL unique constraints automatically reject duplicates instantly
+  try {
+    return await prisma.patient.create({
+      data: {
+        name: name.trim(),
+        email: email?.trim().toLowerCase() || null,
+        phoneNumber: phoneNumber.trim(),
+        age: parsedAge,
+        gender,
+        medicalHistory: medicalHistory || null,
+      },
+    });
+  } catch (error) {
+    // Intercept Prisma's Unique Constraint Violation error code (P2002)
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'phone number or email';
+      throw new Error(`A patient with this ${field} is already registered.`);
+    }
+    throw error;
+  }
 };
 
 export const deletePatient = async (id) => {

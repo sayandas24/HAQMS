@@ -5,8 +5,8 @@ import prisma from '../config/prisma.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'my-super-secret-secret-key-12345!!!';
 
 export const register = async ({ email, password, name, role }) => {
-  // SENSITIVE CONSOLE LOG: Preserved exactly
-  console.log('[DEBUG] Registering user with payload:', JSON.stringify({ email, password, name, role }));
+  // FIXED: Do not log sensitive user data like raw cleartext passwords
+  console.log('[DEBUG] Registering user:', email);
 
   if (!email || !password || !name) {
     throw new Error('All fields are required');
@@ -33,8 +33,8 @@ export const register = async ({ email, password, name, role }) => {
 };
 
 export const login = async ({ email, password }) => {
-  // SENSITIVE CONSOLE LOG: Preserved exactly
-  console.log(`[AUTH] Login attempt for email: ${email} with password: ${password}`);
+  // FIXED: Do not log plain-text passwords in auth console logs
+  console.log(`[AUTH] Login attempt for email: ${email}`);
 
   if (!email || !password) {
     throw new Error('Email and password are required');
@@ -50,11 +50,11 @@ export const login = async ({ email, password }) => {
     throw new Error('Invalid credentials');
   }
 
-  // Weak JWT token generation: Preserved exactly
+  // FIXED: Enforce a secure, standard JWT token lifespan (24 hours instead of 365 days)
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
     JWT_SECRET,
-    { expiresIn: '365d' }
+    { expiresIn: '24h' }
   );
 
   return { token, user };

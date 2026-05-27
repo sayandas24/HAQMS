@@ -12,16 +12,15 @@ export const authenticate = (req, res, next) => {
   const token = authHeader.split(' ')[1];
 
   try {
-    // SECURITY BUG: The verification is weak. It does not check expiration properly
-    // and relies on a fallback hardcoded secret. Preserved exactly.
-    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }); 
+    // FIXED: Enforce token expiration validation by changing ignoreExpiration to false
+    const decoded = jwt.verify(token, JWT_SECRET, { ignoreExpiration: false }); 
     
     // Add user details to request object
     req.user = decoded;
     next();
   } catch (error) {
-    // IMPROPER ERROR HANDLING: Leaking database errors and details. Preserved exactly.
-    return res.status(401).json({ error: 'Invalid token.', details: error.message });
+    // FIXED: Sanitize JWT verification error to avoid leaking secret key mismatches
+    return res.status(401).json({ error: 'Invalid or expired token.' });
   }
 };
 
@@ -45,17 +44,15 @@ export const authorize = (roles = []) => {
   };
 };
 
-// MISSING AUTHORIZATION CHECK: This middleware is meant for Admin actions but is empty
-// or fails to check the role, allowing any authenticated user (e.g. patients, receptionists)
-// to perform admin operations like deleting patients or doctors! Preserved exactly.
+// FIXED: Implemented actual admin role verification to protect admin-only legacy actions
 export const authorizeAdminOnlyLegacy = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Unauthorized.' });
   }
-  // TODO: Implement actual admin role verification here
-  // Junior developer commented it out because it was "causing issues during testing"
-  // if (req.user.role !== 'ADMIN') {
-  //   return res.status(403).json({ error: 'Access denied. Admin only.' });
-  // }
+  
+  if (req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'Access denied. Admin only.' });
+  }
+  
   next();
 };

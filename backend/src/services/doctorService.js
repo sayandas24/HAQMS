@@ -1,24 +1,23 @@
 import prisma from '../config/prisma.js';
 
 export const getAllDoctors = async ({ search, specialization }) => {
-  let query = 'SELECT * FROM "Doctor"';
-  const conditions = [];
+  const where = {};
 
   if (search) {
-    // Direct string interpolation - VULNERABLE TO SQL INJECTION! Preserved exactly.
-    conditions.push(`name ILIKE '%${search}%'`);
+    where.name = {
+      contains: search,
+      mode: 'insensitive',
+    };
   }
 
   if (specialization && specialization !== 'All') {
-    conditions.push(`specialization = '${specialization}'`);
+    where.specialization = specialization;
   }
 
-  if (conditions.length > 0) {
-    query += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  console.log(`[SQL-DEBUG] Executing Query: ${query}`);
-  const doctors = await prisma.$queryRawUnsafe(query);
+  // Type-safe Prisma findMany query protects against SQL injection
+  const doctors = await prisma.doctor.findMany({
+    where,
+  });
 
   return doctors;
 };
@@ -26,24 +25,23 @@ export const getAllDoctors = async ({ search, specialization }) => {
 export const getDoctorStats = async () => {
   const start = Date.now();
 
-  // Independent database calls are run sequentially with await, stalling the event loop. Preserved exactly.
-  const totalDoctors = await prisma.doctor.count();
-  
-  const surgeonsCount = await prisma.doctor.count({
-    where: { department: 'Surgery' },
-  });
-
-  const averageFee = await prisma.doctor.aggregate({
-    _avg: {
-      consultationFee: true,
-    },
-  });
-
-  const highestExperience = await prisma.doctor.aggregate({
-    _max: {
-      experience: true,
-    },
-  });
+  // Run database calls in parallel using Promise.all to prevent stalling the Node.js event loop
+  const [totalDoctors, surgeonsCount, averageFee, highestExperience] = await Promise.all([
+    prisma.doctor.count(),
+    prisma.doctor.count({
+      where: { department: 'Surgery' },
+    }),
+    prisma.doctor.aggregate({
+      _avg: {
+        consultationFee: true,
+      },
+    }),
+    prisma.doctor.aggregate({
+      _max: {
+        experience: true,
+      },
+    }),
+  ]);
 
   const durationMs = Date.now() - start;
 

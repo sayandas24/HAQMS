@@ -25,36 +25,42 @@ export const queueCheckin = async ({ patientId, doctorId, appointmentId }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // 1. Fetch current maximum token number for this doctor today
-  const maxTokenResult = await prisma.queueToken.aggregate({
-    where: {
-      doctorId,
-      createdAt: { gte: today },
-    },
-    _max: {
-      tokenNumber: true,
-    },
-  });
+  // Use a database transaction with a row-level lock on the Doctor row to completely eliminate race conditions
+  const newToken = await prisma.$transaction(async (tx) => {
+    // 1. Lock the Doctor row to serialize all check-in increments for this specific doctor.
+    // This locks only the specific doctor's checking operations, leaving other doctors unaffected  
+    await tx.$queryRaw`
+      SELECT id FROM "Doctor" WHERE id = ${doctorId} FOR UPDATE
+    `;
 
-  const currentMax = maxTokenResult._max.tokenNumber || 0;
-  const nextTokenNumber = currentMax + 1;
+    // 2. Fetch the maximum token number for this doctor today safely (now isolated from other requests)
+    const maxTokenResult = await tx.queueToken.aggregate({
+      where: {
+        doctorId,
+        createdAt: { gte: today },
+      },
+      _max: {
+        tokenNumber: true,
+      },
+    });
 
-  // PERFORMANCE/CONCURRENCY BUG: Artificial sleep to widen the race condition window. Preserved exactly.
-  await new Promise((resolve) => setTimeout(resolve, 350));
+    const currentMax = maxTokenResult._max.tokenNumber || 0;
+    const nextTokenNumber = currentMax + 1;
 
-  // 2. Insert new token
-  const newToken = await prisma.queueToken.create({
-    data: {
-      tokenNumber: nextTokenNumber,
-      patientId,
-      doctorId,
-      appointmentId: appointmentId || null,
-      status: 'WAITING',
-    },
-    include: {
-      patient: true,
-      doctor: true,
-    },
+    // 3. Create the new queue token under safety
+    return await tx.queueToken.create({
+      data: {
+        tokenNumber: nextTokenNumber,
+        patientId,
+        doctorId,
+        appointmentId: appointmentId || null,
+        status: 'WAITING',
+      },
+      include: {
+        patient: true,
+        doctor: true,
+      },
+    });
   });
 
   return newToken;

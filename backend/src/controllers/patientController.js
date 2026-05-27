@@ -48,10 +48,24 @@ export const createPatient = async (req, res, next) => {
 
     return res.status(201).json(patient);
   } catch (error) {
-    if (error.message === 'Name, phoneNumber, age, and gender are required.') {
-      return res.status(400).json({ error: error.message });
+    const msg = error.message;
+    
+    // Graceful routing of validation errors to 400 Bad Request
+    if (
+      msg.includes('required') || 
+      msg.includes('Age must be') || 
+      msg.includes('Invalid email') || 
+      msg.includes('Invalid phone')
+    ) {
+      return res.status(400).json({ error: msg });
     }
-    return res.status(500).json({ error: 'Failed to register patient', details: error.message });
+    
+    // Graceful routing of unique constraints conflicts to 409 Conflict
+    if (msg.includes('already registered')) {
+      return res.status(409).json({ error: msg });
+    }
+
+    return res.status(500).json({ error: 'Failed to register patient', details: msg });
   }
 };
 

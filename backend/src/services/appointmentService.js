@@ -5,34 +5,32 @@ export const getAllAppointments = async ({ doctorId, status }) => {
   if (doctorId) where.doctorId = doctorId;
   if (status) where.status = status;
 
-  // Fetch core appointments
+  // Fetch appointments along with Patient and Doctor relations in a single database roundtrip (O(1) database joins)
+  // This completely eliminates the N+1 performance query issue.
   const appointments = await prisma.appointment.findMany({
     where,
+    include: {
+      patient: {
+        select: {
+          id: true,
+          name: true,
+          phoneNumber: true,
+          age: true,
+          medicalHistory: true,
+        },
+      },
+      doctor: {
+        select: {
+          id: true,
+          name: true,
+          specialization: true,
+        },
+      },
+    },
     orderBy: { appointmentDate: 'asc' },
   });
 
-  const detailedAppointments = [];
-
-  // N+1 triggers here: For every single appointment, we perform two extra queries! Preserved exactly.
-  for (const app of appointments) {
-    console.log(`[N+1 DB QUERY] Fetching Patient (${app.patientId}) and Doctor (${app.doctorId}) for Appointment ${app.id}`);
-    
-    const patient = await prisma.patient.findUnique({
-      where: { id: app.patientId },
-    });
-
-    const doctor = await prisma.doctor.findUnique({
-      where: { id: app.doctorId },
-    });
-
-    detailedAppointments.push({
-      ...app,
-      patient: patient ? { id: patient.id, name: patient.name, phoneNumber: patient.phoneNumber, age: patient.age, medicalHistory: patient.medicalHistory } : null,
-      doctor: doctor ? { id: doctor.id, name: doctor.name, specialization: doctor.specialization } : null,
-    });
-  }
-
-  return detailedAppointments;
+  return appointments;
 };
 
 export const bookAppointment = async ({ patientId, doctorId, appointmentDate, reason }) => {

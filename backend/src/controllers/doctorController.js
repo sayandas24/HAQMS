@@ -5,11 +5,11 @@ export const getAllDoctors = async (req, res, next) => {
     const { search, specialization } = req.query;
     const doctors = await doctorService.getAllDoctors({ search, specialization });
 
-    // Inconsistent API formatting (directly sending array). Preserved exactly.
     return res.json(doctors);
   } catch (error) {
-    // Leaks query syntax details to candidate/attacker. Preserved exactly.
-    return res.status(500).json({ error: 'Database execution failure', sqlMessage: error.message });
+    // Secure general database error response to avoid leaking internal query details
+    console.error('[ERROR] Failed to fetch doctors:', error);
+    return res.status(500).json({ error: 'Failed to retrieve doctors directory' });
   }
 };
 
@@ -22,11 +22,12 @@ export const getDoctorStats = async (req, res, next) => {
       data: stats,
       debugInfo: {
         executionTimeMs: durationMs,
-        notes: 'Loaded sequentially for safety. Optimization needed.',
+        notes: 'Loaded concurrently using Promise.all for high performance.',
       },
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error('[ERROR] Failed to fetch doctor stats:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
@@ -40,6 +41,7 @@ export const getDoctorById = async (req, res, next) => {
 
     return res.json(doctor);
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    console.error('[ERROR] Failed to fetch doctor by ID:', error);
+    return res.status(500).json({ error: 'Internal Server Error' });
   }
 };
