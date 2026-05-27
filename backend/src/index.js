@@ -1,16 +1,16 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
-const authRoutes = require('./routes/auth');
-const patientRoutes = require('./routes/patients');
-const doctorRoutes = require('./routes/doctors');
-const appointmentRoutes = require('./routes/appointments');
-const queueRoutes = require('./routes/queue');
-const reportRoutes = require('./routes/reports');
+import authRoutes from './routes/auth.js';
+import patientRoutes from './routes/patients.js';
+import doctorRoutes from './routes/doctors.js';
+import appointmentRoutes from './routes/appointments.js';
+import queueRoutes from './routes/queue.js';
+import reportRoutes from './routes/reports.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,7 +46,7 @@ app.get('/', (req, res) => {
 
 // GLOBAL ERROR HANDLER
 // BUG: Improper error handling. It returns the raw error stack trace to the client,
-// which leaks details about database types, schema layout, and file paths.
+// which leaks details about database types, schema layout, and file paths. Preserved exactly.
 app.use((err, req, res, next) => {
   console.error('[CRITICAL-ERROR]:', err);
   res.status(500).json({
