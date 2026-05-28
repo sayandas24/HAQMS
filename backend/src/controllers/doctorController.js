@@ -7,7 +7,6 @@ export const getAllDoctors = async (req, res, next) => {
 
     return res.json(doctors);
   } catch (error) {
-    // Secure general database error response to avoid leaking internal query details
     console.error('[ERROR] Failed to fetch doctors:', error);
     return res.status(500).json({ error: 'Failed to retrieve doctors directory' });
   }

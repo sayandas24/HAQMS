@@ -111,8 +111,7 @@ export default function PatientHistoryRecords() {
           </div>
         ) : error ? (
           <div className="glass p-8 text-center rounded-2xl border border-rose-500/20 shadow-md">
-            <ShieldAlert className="h-12 w-12 text-rose-500 mx-auto mb-4 animate-bounce" />
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Synchronize Error</h3>
+            
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 max-w-md mx-auto">{error}</p>
             <Link 
               href="/dashboard" 

@@ -16,7 +16,7 @@ async function main() {
 
     console.log('✓ Cleared existing data');
 
-    // Create login Users
+    // Creating login Users
     const hashedPassword = await bcryptjs.hash('password123', 10);
 
     const adminUser = await prisma.user.create({

@@ -15,11 +15,20 @@ import reportRoutes from './routes/reports.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001', 'https://figitallabs-haqms.vercel.app'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://figitallabs-haqms.vercel.app',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim()) : [])
+];
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (
+      !origin ||
+      allowedOrigins.indexOf(origin) !== -1 ||
+      (origin.startsWith('https://') && origin.endsWith('.vercel.app'))
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Blocked by CORS policy'));
@@ -63,13 +72,17 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Listen on port
-app.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`   HAQMS BACKEND SERVER IS RUNNING ON PORT ${PORT}`);
-  console.log(`   ENVIRONMENT: ${process.env.NODE_ENV}`);
-  console.log(`===================================================`);
-});
+// Listen on port (only if not running on Vercel)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`===================================================`);
+    console.log(`   HAQMS BACKEND SERVER IS RUNNING ON PORT ${PORT}`);
+    console.log(`   ENVIRONMENT: ${process.env.NODE_ENV}`);
+    console.log(`===================================================`);
+  });
+}
+
+export default app;
 
 // Catch unhandled rejections
 process.on('unhandledRejection', (reason, promise) => {
